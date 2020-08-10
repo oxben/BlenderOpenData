@@ -30,87 +30,6 @@ target_devices = (
 #target_devices = ('GeForce GTX 950', 'GeForce GTX 1650 SUPER', 'AMD Ryzen 5 1600 Six-Core Processor',)
 #target_devices = ('AMD Ryzen 5 1600 Six-Core Processor', 'AMD Ryzen 5 3600 6-Core Processor',)
 
-results = {} # results = { "koro" : [(,,), (,,)], "classroom": [(,,), (,,)]}
-
-
-def parse_v1_v2(j):
-    '''Parse v1 and v2 entry'''
-    global results
-    render_device = j['data']['device_info']
-    render_device_name = render_device['compute_devices'][0]
-    if type(render_device_name) is dict:
-        # v2
-        render_device_name = render_device['compute_devices'][0]['name']
-    render_device_name = render_device_name.replace(' (Display)', '')
-    os_name = j['data']['system_info']['system'] + '-' + j['data']['system_info']['bitness']
-    blender_version = j['data']['blender_version']['version']
-
-    if not render_device_name or not os_name:
-        return
-
-    if render_device_name in target_devices and os_name in target_os:
-        for scene in j['data']['scenes']:
-            if scene['stats']['result'] == 'OK':
-                render_time = scene['stats']['total_render_time']
-            else:
-                continue
-
-            scene_name = scene['name']
-            if 'dist_name' in j['data']['system_info']:
-                dist_name = j['data']['system_info']['dist_name'] + '-' + j['data']['system_info']['dist_version']
-            else:
-                dist_name = '-'
-
-            # Add entry to results
-            if not scene_name in results:
-                results[scene_name] = []
-            results[scene_name].append({'scene' : scene_name,
-                                        'dev' : render_device_name,
-                                        'os' : os_name,
-                                        'dist': dist_name,
-                                        'time': render_time,
-                                        'version': blender_version})
-            if not render_device_name:
-                print(l)
-
-
-def parse_v3(entry):
-    '''Parse v3 entry'''
-    global results
-
-    for j in entry['data']:
-        render_device = j['device_info']
-        render_device_name = render_device['compute_devices'][0]['name']
-        os_name = j['system_info']['system'] + '-' + j['system_info']['bitness']
-        blender_version = j['blender_version']['version']
-
-        if not render_device_name or not os_name:
-            continue
-
-        if render_device_name in target_devices and os_name in target_os:
-            scene_name = j['scene']['label']
-            render_time = j['stats']['total_render_time']
-            if render_time <= 0:
-                continue
-
-            if 'dist_name' in j['system_info']:
-                dist_name = j['system_info']['dist_name'] + '-' + j['system_info']['dist_version']
-            else:
-                dist_name = '-'
-
-            # Add entry to results
-            if not scene_name in results:
-                results[scene_name] = []
-            results[scene_name].append({'scene' : scene_name,
-                                        'dev' : render_device_name,
-                                        'os' : os_name,
-                                        'dist': dist_name,
-                                        'time': render_time,
-                                        'version': blender_version})
-            if not render_device_name:
-                print(l)
-
-
 def usage():
     '''Print program usage'''
     progname = os.path.basename(sys.argv[0])
@@ -127,13 +46,115 @@ def usage():
     print("    AMD Ryzen 5 3600 6-Core Processor")
     print("    AMD Ryzen 7 3700X 8-Core Processor")
 
-#
-# Main
-#
-if __name__ == "__main__":
 
+def parse_v1_v2(entry, results):
+    '''Parse v1 and v2 entry and insert matching data in results'''
+    render_device = entry['data']['device_info']
+    render_device_name = render_device['compute_devices'][0]
+    if isinstance(render_device_name, dict):
+        # v2
+        render_device_name = render_device['compute_devices'][0]['name']
+    render_device_name = render_device_name.replace(' (Display)', '')
+    os_name = entry['data']['system_info']['system'] + '-' + entry['data']['system_info']['bitness']
+    blender_version = entry['data']['blender_version']['version']
+
+    if not render_device_name or not os_name:
+        return
+
+    if render_device_name in target_devices and os_name in target_os:
+        for scene in entry['data']['scenes']:
+            if scene['stats']['result'] == 'OK':
+                render_time = scene['stats']['total_render_time']
+            else:
+                continue
+
+            scene_name = scene['name']
+            if 'dist_name' in entry['data']['system_info']:
+                dist_name = entry['data']['system_info']['dist_name'] + '-' + \
+                            entry['data']['system_info']['dist_version']
+            else:
+                dist_name = '-'
+
+            # Add entry to results
+            if not scene_name in results:
+                results[scene_name] = []
+            results[scene_name].append({'scene' : scene_name,
+                                        'dev' : render_device_name,
+                                        'os' : os_name,
+                                        'dist': dist_name,
+                                        'time': render_time,
+                                        'version': blender_version})
+
+
+def parse_v3(entry, results):
+    '''Parse v3 entry and insert matching data in results'''
+    for d in entry['data']:
+        render_device = d['device_info']
+        render_device_name = render_device['compute_devices'][0]['name']
+        os_name = d['system_info']['system'] + '-' + d['system_info']['bitness']
+        blender_version = d['blender_version']['version']
+
+        if not render_device_name or not os_name:
+            continue
+
+        if render_device_name in target_devices and os_name in target_os:
+            scene_name = d['scene']['label']
+            render_time = d['stats']['total_render_time']
+            if render_time <= 0:
+                continue
+
+            if 'dist_name' in d['system_info']:
+                dist_name = d['system_info']['dist_name'] + '-' + \
+                            d['system_info']['dist_version']
+            else:
+                dist_name = '-'
+
+            # Add entry to results
+            if not scene_name in results:
+                results[scene_name] = []
+            results[scene_name].append({'scene' : scene_name,
+                                        'dev' : render_device_name,
+                                        'os' : os_name,
+                                        'dist': dist_name,
+                                        'time': render_time,
+                                        'version': blender_version})
+
+
+def print_results(results, verbose):
+    '''Compute some statistics and print the results'''
+    # Sort results for each scene
+    for scn in results.values():
+        scn.sort(key=lambda res: res['time'])
+
+    # Display results
+    print(f"Target OS: {', '.join(target_os)}")
+    print(f"Target Devices: {', '.join(target_devices)}")
+    print("")
+    for scn in sorted(results):
+        print(f"Render time for '{scn}' (fastest to slowest):")
+        times = []
+        for r in results[scn]:
+            if verbose:
+                print(f"Scene: {r['scene']:20}  Device: {r['dev']:36}  RenderTime: {r['time']:10.2f}  OS: {r['os']}/{r['dist']:20}  V: {r['version']}")
+            times.append(r['time'])
+        print("Sample Count:             %10d" % len(times))
+        print("Mean RenderTime:          %10.2f" % mean(times))
+        print("Median RenderTime:        %10.2f" % median(times))
+        print("Min RenderTime:           %10.2f" % min(times))
+        print("Max RenderTime:           %10.2f" % max(times))
+        if len(times) > 1:
+            print("Std Deviation RenderTime: %10.2f" % stdev(times))
+        #print("Variance RenderTime:     %10.2f" % pvariance(times))
+        print("")
+
+
+def main():
+    '''Main routine'''
     input_file = ""
     verbose = False
+    results = {} # results = { "koro" : [(,,), (,,)], "classroom": [(,,), (,,)]}
+    global target_devices
+    global target_os
 
     # Parse args
     try:
@@ -165,7 +186,6 @@ if __name__ == "__main__":
     # Parse all entries in json file
     with open(input_file) as f:
         lines = f.readlines()
-
         #print(json.dumps(json.loads(lines[0]), indent=4))
 
         for l in lines:
@@ -173,35 +193,16 @@ if __name__ == "__main__":
 
             schema_version = j['schema_version']
             if schema_version in ('v1', 'v2'):
-                parse_v1_v2(j)
+                parse_v1_v2(j, results)
             elif schema_version == 'v3':
-                parse_v3(j)
+                parse_v3(j, results)
             else:
                 print('Unsupported schema : ' + schema_version)
                 print(json.dumps(json.loads(l), indent=4))
                 #sys.exit(1)
 
-    # Sort results for each scene
-    for scn in results.values():
-        scn.sort(key=lambda res: res['time'])
+    print_results(results, verbose)
 
-    # Display results
-    print(f"Target OS: {', '.join(target_os)}")
-    print(f"Target Devices: {', '.join(target_devices)}")
-    print("")
-    for scn in sorted(results):
-        print(f"Render time for '{scn}' (fastest to slowest):")
-        times = []
-        for r in results[scn]:
-            if verbose:
-                print(f"Scene: {r['scene']:20}  Device: {r['dev']:36}  RenderTime: {r['time']:10.2f}  OS: {r['os']}/{r['dist']:20}  V: {r['version']}")
-            times.append(r['time'])
-        print("Sample Count:             %10d" % len(times))
-        print("Mean RenderTime:          %10.2f" % mean(times))
-        print("Median RenderTime:        %10.2f" % median(times))
-        print("Min RenderTime:           %10.2f" % min(times))
-        print("Max RenderTime:           %10.2f" % max(times))
-        if len(times) > 1:
-            print("Std Deviation RenderTime: %10.2f" % stdev(times))
-        #print("Variance RenderTime:     %10.2f" % pvariance(times))
-        print("")
+
+if __name__ == "__main__":
+    main()
