@@ -38,6 +38,7 @@ class BlenderOpenDataParser:
         self.target_devices = DFLT_TARGET_DEVICES
         self.results = {} # results = { "koro" : [(,,), (,,)], "classroom": [(,,), (,,)]}
         self.verbose = False
+        self.entries = 0
 
 
     def usage(self):
@@ -59,6 +60,7 @@ class BlenderOpenDataParser:
 
     def parse_v1_v2(self, entry):
         '''Parse v1 and v2 entry and insert matching data in results'''
+        self.entries += 1
         render_device = entry['data']['device_info']
         render_device_name = render_device['compute_devices'][0]
         if isinstance(render_device_name, dict):
@@ -99,6 +101,7 @@ class BlenderOpenDataParser:
     def parse_v3(self, entry):
         '''Parse v3 entry and insert matching data in results'''
         for d in entry['data']:
+            self.entries += 1
             render_device = d['device_info']
             render_device_name = render_device['compute_devices'][0]['name']
             os_name = d['system_info']['system'] + '-' + d['system_info']['bitness']
@@ -139,6 +142,7 @@ class BlenderOpenDataParser:
         # Display results
         print(f"Target OS: {', '.join(self.target_os)}")
         print(f"Target Devices: {', '.join(self.target_devices)}")
+        print(f"Parsed Entries: {self.entries}")
         print("")
         for scn in sorted(self.results):
             print(f"Render time for '{scn}' (fastest to slowest):")
