@@ -49,7 +49,7 @@ class BlenderOpenDataParser:
         '''Print program usage'''
         progname = os.path.basename(sys.argv[0])
         print("Extract statistics from Blender Benchmark Opendata: Scene render times per OS or devices")
-        print(f"\nUsage: {progname} [-d render_device] [-o os] [-v] [--list-os|--list_devices] json_file")
+        print(f"\nUsage: {progname} [-d render_device] [-o os] [-v] [--list-os|--list-devices] json_file")
         print("\nExamples:")
         print(f'    {progname} -o Linux-64bit -d "AMD Ryzen 5 3600 6-Core Processor" file.json')
         print(f'    {progname} -v -d "GeForce GTX 950" -d "GeForce GTX 1650 SUPER" file.json')

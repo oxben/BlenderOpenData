@@ -5,7 +5,7 @@ Python tool to extract data from Blender Benchmark Open Data JSON files (https:/
 
     Extract statistics from Blender Benchmark Opendata: Scene render times per OS or devices
     
-    Usage: blender-opendata.py [-d render_device] [-o os] [-v] [--list-os|--list_devices] json_file
+    Usage: blender-opendata.py [-d render_device] [-o os] [-v] [--list-os|--list-devices] json_file
     
     Examples:
         blender-opendata.py -o Linux-64bit -d "AMD Ryzen 5 3600 6-Core Processor" file.json
