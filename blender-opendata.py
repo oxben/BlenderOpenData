@@ -14,21 +14,21 @@ import sys
 from statistics import mean, median, pvariance, stdev
 
 
-#DFLT_TARGET_OS = ('Linux-64bit', 'Windows-64bit')
-DFLT_TARGET_OS = ('Linux-64bit',)
-#DFLT_TARGET_OS = ('Windows-64bit',)
+#DFLT_TARGET_OS = ['Linux-64bit', 'Windows-64bit']
+DFLT_TARGET_OS = ['Linux-64bit']
+#DFLT_TARGET_OS = ['Windows-64bit']
 
-DFLT_TARGET_DEVICES = (
+DFLT_TARGET_DEVICES = [
     'GeForce GTX 950',
     'GeForce GTX 1650 SUPER',
     'AMD Ryzen 5 1600 Six-Core Processor',
     'AMD Ryzen 5 3600 6-Core Processor',
-)
+]
 
-#DFLT_TARGET_DEVICES = ('AMD Ryzen 5 1600 Six-Core Processor',)
-#DFLT_TARGET_DEVICES = ('AMD Ryzen 5 3600 6-Core Processor',)
-#DFLT_TARGET_DEVICES = ('GeForce GTX 950', 'GeForce GTX 1650 SUPER', 'AMD Ryzen 5 1600 Six-Core Processor',)
-#DFLT_TARGET_DEVICES = ('AMD Ryzen 5 1600 Six-Core Processor', 'AMD Ryzen 5 3600 6-Core Processor',)
+#DFLT_TARGET_DEVICES = ['AMD Ryzen 5 1600 Six-Core Processor']
+#DFLT_TARGET_DEVICES = ['AMD Ryzen 5 3600 6-Core Processor']
+#DFLT_TARGET_DEVICES = ['GeForce GTX 950', 'GeForce GTX 1650 SUPER', 'AMD Ryzen 5 1600 Six-Core Processor']
+#DFLT_TARGET_DEVICES = ['AMD Ryzen 5 1600 Six-Core Processor', 'AMD Ryzen 5 3600 6-Core Processor']
 
 class BlenderOpenDataParser:
     '''Parser for exploring Blender Benchmark Open Data json files'''
@@ -52,6 +52,7 @@ class BlenderOpenDataParser:
         print(f"\nUsage: {progname} [-d render_device] [-o os] [-v] [--list-os|--list_devices] json_file")
         print("\nExamples:")
         print(f'    {progname} -o Linux-64bit -d "AMD Ryzen 5 3600 6-Core Processor" file.json')
+        print(f'    {progname} -v -d "GeForce GTX 950" -d "GeForce GTX 1650 SUPER" file.json')
         print(f'    {progname} -o Linux-64bit --list-devices file.json')
         print("\nOS:")
         print("    Linux-64bit")
@@ -206,6 +207,8 @@ class BlenderOpenDataParser:
     def run(self):
         '''Main routine'''
         input_file = ""
+        custom_device = False
+        custom_os = False
 
         # Parse args
         try:
@@ -217,12 +220,20 @@ class BlenderOpenDataParser:
 
         for o, a in opts:
             if o == '-d':
-                self.target_devices = (a,)
+                if not custom_device:
+                    self.target_devices = [a]
+                    custom_device = True
+                else:
+                    self.target_devices.append(a)
             elif o in ("-h", "--help"):
                 self.usage()
                 sys.exit(0)
             elif o == '-o':
-                self.target_os = (a,)
+                if not custom_os:
+                    self.target_os = [a]
+                    custom_os = True
+                else:
+                    self.target_os.append(a)
             elif o == '-v':
                 self.verbose = True
             elif o == '--list-devices':

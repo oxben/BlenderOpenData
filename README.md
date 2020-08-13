@@ -9,6 +9,7 @@ Python tool to extract data from Blender Benchmark Open Data JSON files (https:/
     
     Examples:
         blender-opendata.py -o Linux-64bit -d "AMD Ryzen 5 3600 6-Core Processor" file.json
+        blender-opendata.py -v -d "GeForce GTX 950" -d "GeForce GTX 1650 SUPER" file.json
         blender-opendata.py -o Linux-64bit --list-devices file.json
     
     OS:
