@@ -11,7 +11,10 @@ import getopt
 import json
 import os
 import sys
+from io import BytesIO
 from statistics import mean, median, pvariance, stdev
+from urllib.request import urlopen
+from zipfile import ZipFile
 
 
 #DFLT_TARGET_OS = ['Linux-64bit', 'Windows-64bit']
@@ -29,6 +32,9 @@ DFLT_TARGET_DEVICES = [
 #DFLT_TARGET_DEVICES = ['AMD Ryzen 5 3600 6-Core Processor']
 #DFLT_TARGET_DEVICES = ['GeForce GTX 950', 'GeForce GTX 1650 SUPER', 'AMD Ryzen 5 1600 Six-Core Processor']
 #DFLT_TARGET_DEVICES = ['AMD Ryzen 5 1600 Six-Core Processor', 'AMD Ryzen 5 3600 6-Core Processor']
+
+LATEST_DATA_URL="https://opendata.blender.org/snapshots/opendata-latest.zip"
+
 
 class BlenderOpenDataParser:
     '''Parser for exploring Blender Benchmark Open Data json files'''
@@ -49,10 +55,10 @@ class BlenderOpenDataParser:
         '''Print program usage'''
         progname = os.path.basename(sys.argv[0])
         print("Extract statistics from Blender Benchmark Opendata: Scene render times per OS or devices")
-        print(f"\nUsage: {progname} [-d render_device] [-o os] [-v] [--list-os|--list-devices] json_file")
+        print(f"\nUsage: {progname} [-d render_device] [-o os] [-v] [--list-os|--list-devices] <json_file>|--latest")
         print("\nExamples:")
         print(f'    {progname} -o Linux-64bit -d "AMD Ryzen 5 3600 6-Core Processor" file.json')
-        print(f'    {progname} -v -d "GeForce GTX 950" -d "GeForce GTX 1650 SUPER" file.json')
+        print(f'    {progname} -v -d "GeForce GTX 950" -d "GeForce GTX 1650 SUPER" --latest')
         print(f'    {progname} -o Linux-64bit --list-devices file.json')
         print("\nOS:")
         print("    Linux-64bit")
@@ -159,6 +165,19 @@ class BlenderOpenDataParser:
                                                  'time': render_time,
                                                  'version': blender_version})
 
+    def download_latest_data(self):
+        print(f"Downloading data from {LATEST_DATA_URL}")
+        resp = urlopen(LATEST_DATA_URL)
+        print("Download complete")
+        zipfile = ZipFile(BytesIO(resp.read()))
+        zip_names = zipfile.namelist()
+        for file_name in zip_names:
+            if file_name.endswith(".jsonl"):
+                print(f"Extract {file_name}")
+                extracted_file = zipfile.open(file_name)
+                return extracted_file
+        return None
+
     def print_all_os(self):
         '''Print operating system list'''
         print(f"Operating Systems: {len(self.all_os):7}")
@@ -209,10 +228,12 @@ class BlenderOpenDataParser:
         input_file = ""
         custom_device = False
         custom_os = False
+        download_data = False
 
         # Parse args
         try:
-            opts, args = getopt.getopt(sys.argv[1:], 'd:ho:v', ["help", "list-os", "list-devices"])
+            opts, args = getopt.getopt(sys.argv[1:], 'd:ho:v', \
+                                       ["help", "latest", "list-os", "list-devices"])
         except getopt.GetoptError as err:
             print(err.msg)
             self.usage()
@@ -236,6 +257,8 @@ class BlenderOpenDataParser:
                     self.target_os.append(a)
             elif o == '-v':
                 self.verbose = True
+            elif o == '--latest':
+                download_data = True
             elif o == '--list-devices':
                 self.list_devices = True
             elif o == '--list-os':
@@ -245,30 +268,35 @@ class BlenderOpenDataParser:
                 self.usage()
                 sys.exit(1)
 
-        if len(args) < 1:
+        # Open json file
+        if not download_data and len(args) < 1:
             print("Error: missing input file")
             self.usage()
             sys.exit(1)
 
-        input_file = args[0]
+        if download_data:
+            f = self.download_latest_data()
+        else:
+            input_file = args[0]
+            f = open(input_file)
 
         # Parse all entries in json file
-        with open(input_file) as f:
-            lines = f.readlines()
-            #print(json.dumps(json.loads(lines[0]), indent=4))
+        lines = f.readlines()
+        #print(json.dumps(json.loads(lines[0]), indent=4))
 
-            for l in lines:
-                j = json.loads(l)
+        for l in lines:
+            j = json.loads(l)
 
-                schema_version = j['schema_version']
-                if schema_version in ('v1', 'v2'):
-                    self.parse_v1_v2(j)
-                elif schema_version == 'v3':
-                    self.parse_v3(j)
-                else:
-                    print('Unsupported schema : ' + schema_version)
-                    print(json.dumps(json.loads(l), indent=4))
-                    #sys.exit(1)
+            schema_version = j['schema_version']
+            if schema_version in ('v1', 'v2'):
+                self.parse_v1_v2(j)
+            elif schema_version == 'v3':
+                self.parse_v3(j)
+            else:
+                print('Unsupported schema : ' + schema_version)
+                print(json.dumps(json.loads(l), indent=4))
+                #sys.exit(1)
+        f.close()
 
         if self.list_devices:
             self.print_all_devices()
