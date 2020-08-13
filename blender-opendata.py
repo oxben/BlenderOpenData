@@ -39,14 +39,20 @@ class BlenderOpenDataParser:
         self.results = {} # results = { "koro" : [(,,), (,,)], "classroom": [(,,), (,,)]}
         self.verbose = False
         self.entries = 0
+        self.list_devices = False
+        self.list_os = False
+        self.all_os = {}
+        self.all_render_devices = {}
 
 
     def usage(self):
         '''Print program usage'''
         progname = os.path.basename(sys.argv[0])
-        print(f"Usage: {progname} [-d render_device] [-o os] [-v] json_file")
+        print("Extract statistics from Blender Benchmark Opendata: Scene render times per OS or devices")
+        print(f"\nUsage: {progname} [-d render_device] [-o os] [-v] [--list-os|--list_devices] json_file")
         print("\nExamples:")
         print(f'    {progname} -o Linux-64bit -d "AMD Ryzen 5 3600 6-Core Processor" file.json')
+        print(f'    {progname} -o Linux-64bit --list-devices file.json')
         print("\nOS:")
         print("    Linux-64bit")
         print("    Windows-64bit")
@@ -71,6 +77,16 @@ class BlenderOpenDataParser:
         blender_version = entry['data']['blender_version']['version']
 
         if not render_device_name or not os_name:
+            return
+
+        if self.list_os:
+            self.all_os.setdefault(os_name, 0)
+            self.all_os[os_name] += 1
+            return
+
+        if self.list_devices:
+            self.all_render_devices.setdefault(render_device_name, 0)
+            self.all_render_devices[render_device_name] += 1
             return
 
         if render_device_name in self.target_devices and os_name in self.target_os:
@@ -110,6 +126,16 @@ class BlenderOpenDataParser:
             if not render_device_name or not os_name:
                 continue
 
+            if self.list_os:
+                self.all_os.setdefault(os_name, 0)
+                self.all_os[os_name] += 1
+                continue
+
+            if self.list_devices:
+                self.all_render_devices.setdefault(render_device_name, 0)
+                self.all_render_devices[render_device_name] += 1
+                continue
+
             if render_device_name in self.target_devices and os_name in self.target_os:
                 scene_name = d['scene']['label']
                 render_time = d['stats']['total_render_time']
@@ -131,6 +157,21 @@ class BlenderOpenDataParser:
                                                  'dist': dist_name,
                                                  'time': render_time,
                                                  'version': blender_version})
+
+    def print_all_os(self):
+        '''Print operating system list'''
+        print(f"Operating Systems: {len(self.all_os):7}")
+        print(f"Parsed Entries:    {self.entries:7}\n")
+        for os in sorted(self.all_os.keys()):
+            print(f"{self.all_os[os]:7d} {os:20}")
+
+
+    def print_all_devices(self):
+        '''Print render device list'''
+        print(f"Render Devices: {len(self.all_render_devices):7}")
+        print(f"Parsed Entries: {self.entries:7}\n")
+        for dev in sorted(self.all_render_devices.keys()):
+            print(f"{self.all_render_devices[dev]:7d} {dev:40}")
 
 
     def print_results(self):
@@ -168,7 +209,7 @@ class BlenderOpenDataParser:
 
         # Parse args
         try:
-            opts, args = getopt.getopt(sys.argv[1:], 'd:o:v', ["help"])
+            opts, args = getopt.getopt(sys.argv[1:], 'd:ho:v', ["help", "list-os", "list-devices"])
         except getopt.GetoptError as err:
             print(err.msg)
             self.usage()
@@ -177,10 +218,17 @@ class BlenderOpenDataParser:
         for o, a in opts:
             if o == '-d':
                 self.target_devices = (a,)
+            elif o in ("-h", "--help"):
+                self.usage()
+                sys.exit(0)
             elif o == '-o':
                 self.target_os = (a,)
             elif o == '-v':
                 self.verbose = True
+            elif o == '--list-devices':
+                self.list_devices = True
+            elif o == '--list-os':
+                self.list_os = True
             else:
                 print("Error: unhandled option" + o)
                 self.usage()
@@ -211,7 +259,12 @@ class BlenderOpenDataParser:
                     print(json.dumps(json.loads(l), indent=4))
                     #sys.exit(1)
 
-        self.print_results()
+        if self.list_devices:
+            self.print_all_devices()
+        elif self.list_os:
+            self.print_all_os()
+        else:
+            self.print_results()
 
 if __name__ == "__main__":
     parser = BlenderOpenDataParser()
