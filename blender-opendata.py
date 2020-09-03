@@ -12,6 +12,7 @@ import json
 import os
 import re
 import sys
+import time
 from io import BytesIO
 from statistics import mean, median, pvariance, stdev
 from urllib.request import urlopen
@@ -46,14 +47,15 @@ class BlenderOpenDataParser:
         self.target_version = []
         self.results = {} # results = { "koro" : [(,,), (,,)], "classroom": [(,,), (,,)]}
         self.verbose = False
-        self.entries = 0
         self.list_devices = False
         self.list_os = False
         self.list_versions = False
         self.all_os = {}
         self.all_render_devices = {}
         self.all_versions = {}
-
+        # stats
+        self.entries = 0
+        self.duration = None
 
     def usage(self):
         '''Print program usage'''
@@ -270,7 +272,7 @@ class BlenderOpenDataParser:
         # Display results
         print(f"Target OS: {', '.join(self.target_os)}")
         print(f"Target Devices: {', '.join(self.target_devices)}")
-        print(f"Parsed Entries: {self.entries}")
+        print(f"Parsed Entries: {self.entries} ({self.entries/self.duration:.0f} entries/second)")
         print("")
         for scn in sorted(self.results):
             print(f"Render time for '{scn}' (fastest to slowest):")
@@ -355,6 +357,7 @@ class BlenderOpenDataParser:
             f = open(input_file)
 
         # Parse all entries in json file
+        start_time = time.time()
         lines = f.readlines()
         #print(json.dumps(json.loads(lines[0]), indent=4))
 
@@ -371,6 +374,8 @@ class BlenderOpenDataParser:
                 print(json.dumps(json.loads(l), indent=4))
                 #sys.exit(1)
         f.close()
+
+        self.duration = time.time() - start_time
 
         # Display results
         if self.list_devices:
