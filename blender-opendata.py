@@ -165,11 +165,19 @@ class BlenderOpenDataParser:
                                                  'time': render_time,
                                                  'version': blender_version})
 
+
     def download_latest_data(self):
+        '''Download latest data archive and return ZipFile object'''
         print(f"Downloading data from {LATEST_DATA_URL}")
         resp = urlopen(LATEST_DATA_URL)
         print("Download complete")
         zipfile = ZipFile(BytesIO(resp.read()))
+        return zipfile
+
+
+    def download_and_open_latest_data(self):
+        '''Download latest data archive and return opened file object'''
+        zipfile = self.download_latest_data()
         zip_names = zipfile.namelist()
         for file_name in zip_names:
             if file_name.endswith(".jsonl"):
@@ -177,6 +185,19 @@ class BlenderOpenDataParser:
                 extracted_file = zipfile.open(file_name)
                 return extracted_file
         return None
+
+
+    def download_and_save_latest_data(self):
+        '''Download latest data archive, extract and save .jsonl file to current directory'''
+        zipfile = self.download_latest_data()
+        zip_names = zipfile.namelist()
+        for file_name in zip_names:
+            if file_name.endswith(".jsonl"):
+                extracted_file_name = zipfile.extract(file_name)
+                print(f"{file_name} extracted to {extracted_file_name}")
+                return
+        print("No file .jsonl found")
+
 
     def print_all_os(self):
         '''Print operating system list'''
@@ -233,7 +254,7 @@ class BlenderOpenDataParser:
         # Parse args
         try:
             opts, args = getopt.getopt(sys.argv[1:], 'd:ho:v', \
-                                       ["help", "latest", "list-os", "list-devices"])
+                                       ["help", "download", "latest", "list-os", "list-devices"])
         except getopt.GetoptError as err:
             print(err.msg)
             self.usage()
@@ -257,6 +278,9 @@ class BlenderOpenDataParser:
                     self.target_os.append(a)
             elif o == '-v':
                 self.verbose = True
+            elif o == '--download':
+                self.download_and_save_latest_data()
+                return
             elif o == '--latest':
                 download_data = True
             elif o == '--list-devices':
@@ -275,7 +299,7 @@ class BlenderOpenDataParser:
             sys.exit(1)
 
         if download_data:
-            f = self.download_latest_data()
+            f = self.download_and_open_latest_data()
         else:
             input_file = args[0]
             f = open(input_file)
