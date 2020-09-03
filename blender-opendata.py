@@ -10,6 +10,7 @@ Author: Oxben <oxben@free.fr>
 import getopt
 import json
 import os
+import re
 import sys
 from io import BytesIO
 from statistics import mean, median, pvariance, stdev
@@ -42,20 +43,25 @@ class BlenderOpenDataParser:
     def __init__(self):
         self.target_os = DFLT_TARGET_OS
         self.target_devices = DFLT_TARGET_DEVICES
+        self.target_version = []
         self.results = {} # results = { "koro" : [(,,), (,,)], "classroom": [(,,), (,,)]}
         self.verbose = False
         self.entries = 0
         self.list_devices = False
         self.list_os = False
+        self.list_versions = False
         self.all_os = {}
         self.all_render_devices = {}
+        self.all_versions = {}
 
 
     def usage(self):
         '''Print program usage'''
         progname = os.path.basename(sys.argv[0])
-        print("Extract statistics from Blender Benchmark Opendata: Scene render times per OS or devices")
-        print(f"\nUsage: {progname} [-d render_device] [-o os] [-v] [--list-os|--list-devices] <json_file>|--latest")
+        print("Extract statistics from Blender Benchmark Open Data: Scene render times per OS or devices")
+        print(f"\nUsage:")
+        print(f"    {progname} [-d render_device] [-o os] [-V version] [-v] [--list-os|--list-devices|--list-version] <json_file>|--latest")
+        print(f"    {progname} --download")
         print("\nExamples:")
         print(f'    {progname} -o Linux-64bit -d "AMD Ryzen 5 3600 6-Core Processor" file.json')
         print(f'    {progname} -v -d "GeForce GTX 950" -d "GeForce GTX 1650 SUPER" --latest')
@@ -69,6 +75,22 @@ class BlenderOpenDataParser:
         print("    AMD Ryzen 5 1600 Six-Core Processor")
         print("    AMD Ryzen 5 3600 6-Core Processor")
         print("    AMD Ryzen 7 3700X 8-Core Processor")
+        print("\nBlender versions:")
+        print("    2.83.0")
+        print("    2.90.0")
+
+
+    def match_blender_version(self, version):
+        '''Return True if the version matches one of the target version regexes'''
+        if not self.target_version:
+            return True
+
+        for v in self.target_version:
+            #print(f"match versions: {v} vs {version}")
+            if re.fullmatch(v, version):
+                return True
+
+        return False
 
 
     def parse_v1_v2(self, entry):
@@ -94,6 +116,14 @@ class BlenderOpenDataParser:
         if self.list_devices:
             self.all_render_devices.setdefault(render_device_name, 0)
             self.all_render_devices[render_device_name] += 1
+            return
+
+        if self.list_versions:
+            self.all_versions.setdefault(blender_version, 0)
+            self.all_versions[blender_version] += 1
+            return
+
+        if not self.match_blender_version(blender_version):
             return
 
         if render_device_name in self.target_devices and os_name in self.target_os:
@@ -142,6 +172,14 @@ class BlenderOpenDataParser:
                 self.all_render_devices.setdefault(render_device_name, 0)
                 self.all_render_devices[render_device_name] += 1
                 continue
+
+            if self.list_versions:
+                self.all_versions.setdefault(blender_version, 0)
+                self.all_versions[blender_version] += 1
+                return
+
+            if not self.match_blender_version(blender_version):
+                return
 
             if render_device_name in self.target_devices and os_name in self.target_os:
                 scene_name = d['scene']['label']
@@ -215,6 +253,14 @@ class BlenderOpenDataParser:
             print(f"{self.all_render_devices[dev]:7d} {dev:40}")
 
 
+    def print_all_versions(self):
+        '''Print Blender versions list'''
+        print(f"Blender Versions: {len(self.all_versions):7}")
+        print(f"Parsed Entries:   {self.entries:7}\n")
+        for v in sorted(self.all_versions.keys()):
+            print(f"{self.all_versions[v]:7d} {v:20}")
+
+
     def print_results(self):
         '''Compute some statistics and print the results'''
         # Sort results for each scene
@@ -253,8 +299,8 @@ class BlenderOpenDataParser:
 
         # Parse args
         try:
-            opts, args = getopt.getopt(sys.argv[1:], 'd:ho:v', \
-                                       ["help", "download", "latest", "list-os", "list-devices"])
+            opts, args = getopt.getopt(sys.argv[1:], 'd:ho:vV:', \
+                                       ["help", "download", "latest", "list-os", "list-devices", "list-versions"])
         except getopt.GetoptError as err:
             print(err.msg)
             self.usage()
@@ -278,6 +324,8 @@ class BlenderOpenDataParser:
                     self.target_os.append(a)
             elif o == '-v':
                 self.verbose = True
+            elif o == '-V':
+                self.target_version.append(a)
             elif o == '--download':
                 self.download_and_save_latest_data()
                 return
@@ -287,6 +335,8 @@ class BlenderOpenDataParser:
                 self.list_devices = True
             elif o == '--list-os':
                 self.list_os = True
+            elif o == '--list-versions':
+                self.list_versions = True
             else:
                 print("Error: unhandled option" + o)
                 self.usage()
@@ -322,10 +372,13 @@ class BlenderOpenDataParser:
                 #sys.exit(1)
         f.close()
 
+        # Display results
         if self.list_devices:
             self.print_all_devices()
         elif self.list_os:
             self.print_all_os()
+        elif self.list_versions:
+            self.print_all_versions()
         else:
             self.print_results()
 
